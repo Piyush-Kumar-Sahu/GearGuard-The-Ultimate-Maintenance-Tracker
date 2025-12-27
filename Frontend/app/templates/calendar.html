@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Maintenance Calendar - GearGuard{% endblock %}
+
+{% block content %}
+<div class="technician-only">
+    <div class="card">
+        <div class="card-header">
+            <h1 class="card-title">Maintenance Calendar</h1>
+            <div class="flex gap-2">
+                <button class="btn btn-outline" onclick="changeView('month')">Month</button>
+                <button class="btn btn-outline" onclick="changeView('week')">Week</button>
+            </div>
+        </div>
+        
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <div class="calendar-nav">
+                    <button onclick="previousMonth()">← Previous</button>
+                    <h2 id="current-month-year" style="margin: 0; color: var(--text-primary);">December 2025</h2>
+                    <button onclick="nextMonth()">Next →</button>
+                </div>
+                <button class="btn btn-primary" onclick="location.href='{{ url_for('equipment_detail') }}'">
+                    + Schedule Maintenance
+                </button>
+            </div>
+            
+            <div class="calendar-grid" id="calendar-grid">
+                <!-- Day Headers -->
+                <div class="calendar-day-header">Sun</div>
+                <div class="calendar-day-header">Mon</div>
+                <div class="calendar-day-header">Tue</div>
+                <div class="calendar-day-header">Wed</div>
+                <div class="calendar-day-header">Thu</div>
+                <div class="calendar-day-header">Fri</div>
+                <div class="calendar-day-header">Sat</div>
+                
+                <!-- Calendar Days (populated by JavaScript or backend) -->
+                {% for day in calendar_days %}
+                <div class="calendar-day {% if day.is_other_month %}other-month{% endif %} {% if day.is_today %}today{% endif %}">
+                    <div class="calendar-day-number">{{ day.day }}</div>
+                    
+                    {% for event in day.events %}
+                    <div class="calendar-event {{ event.type }}" 
+                         onclick="viewMaintenanceDetails('{{ event.id }}')"
+                         title="{{ event.description }}">
+                        {{ event.subject }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Legend -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Legend</h2>
+        </div>
+        <div class="flex gap-3" style="flex-wrap: wrap;">
+            <div class="flex gap-1" style="align-items: center;">
+                <div style="width: 20px; height: 20px; background-color: var(--brand-danger); border-radius: 4px;"></div>
+                <span style="color: var(--text-primary);">Corrective Maintenance</span>
+            </div>
+            <div class="flex gap-1" style="align-items: center;">
+                <div style="width: 20px; height: 20px; background-color: var(--brand-success); border-radius: 4px;"></div>
+                <span style="color: var(--text-primary);">Preventive Maintenance</span>
+            </div>
+            <div class="flex gap-1" style="align-items: center;">
+                <div style="width: 20px; height: 20px; background-color: rgba(13, 110, 253, 0.2); border: 2px solid var(--brand-primary); border-radius: 4px;"></div>
+                <span style="color: var(--text-primary);">Today</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Upcoming Maintenance -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Upcoming Maintenance (Next 7 Days)</h2>
+        </div>
+        
+        <table class="equipment-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Subject</th>
+                    <th>Equipment</th>
+                    <th>Type</th>
+                    <th>Technician</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in upcoming_events %}
+                <tr>
+                    <td>{{ event.date }}</td>
+                    <td>{{ event.subject }}</td>
+                    <td>{{ event.equipment_name }}</td>
+                    <td>
+                        <span class="priority-badge priority-{{ 'high' if event.maintenance_type == 'corrective' else 'low' }}">
+                            {{ event.maintenance_type|upper }}
+                        </span>
+                    </td>
+                    <td>{{ event.technician_name }}</td>
+                    <td>
+                        {% if event.priority %}
+                        <span class="priority-badge priority-{{ event.priority }}">
+                            {{ event.priority|upper }}
+                        </span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="employee-only hidden">
+    <div class="card">
+        <div class="card-header">
+            <h1 class="card-title">Calendar Access Restricted</h1>
+        </div>
+        <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+            The maintenance calendar is only accessible to technicians. Please switch to Technician view to access this feature.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentDate = new Date();
+    let currentView = 'month';
+    
+    // ============================================
+    // Calendar Navigation
+    // ============================================
+    function previousMonth() {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        updateCalendar();
+    }
+    
+    function nextMonth() {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        updateCalendar();
+    }
+    
+    function changeView(view) {
+        currentView = view;
+        updateCalendar();
+        
+        // Update button states
+        document.querySelectorAll('.calendar-header .btn-outline').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+    }
+    
+    function updateCalendar() {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        
+        document.getElementById('current-month-year').textContent = 
+            `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+        
+        // In a real application, this would trigger a server request
+        // to fetch events for the new month
+        console.log('Calendar updated to:', currentDate);
+    }
+    
+    // ============================================
+    // View Maintenance Details
+    // ============================================
+    function viewMaintenanceDetails(eventId) {
+        // In a real application, this would show a modal or navigate to details
+        console.log('Viewing maintenance event:', eventId);
+        alert(`Maintenance Event ID: ${eventId}\n\nIn production, this would show detailed information about the maintenance request.`);
+    }
+    
+    // ============================================
+    // Initialize Calendar
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCalendar();
+        
+        // Set current date for demonstration
+        const today = new Date();
+        currentDate = today;
+        updateCalendar();
+    });
+</script>
+{% endblock %}

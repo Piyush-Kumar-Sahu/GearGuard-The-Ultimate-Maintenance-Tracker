@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Kanban Board - GearGuard{% endblock %}
+
+{% block content %}
+<div class="technician-only">
+    <div class="card">
+        <div class="card-header">
+            <h1 class="card-title">Maintenance Request Board</h1>
+            <div class="flex gap-2">
+                <button class="btn btn-primary" onclick="location.href='{{ url_for('equipment_detail') }}'">
+                    + New Request
+                </button>
+            </div>
+        </div>
+        
+        <!-- Kanban Board -->
+        <div class="kanban-board">
+            <!-- New Column -->
+            <div class="kanban-column" data-status="new">
+                <div class="kanban-column-header new">
+                    <span>New</span>
+                    <span class="kanban-column-count" id="count-new">0</span>
+                </div>
+                <div class="kanban-cards" id="cards-new" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    {% for req in requests %}
+                    {% if req.status == 'new' %}
+                    <div class="kanban-card {% if req.is_overdue %}overdue{% endif %}" 
+                         draggable="true" 
+                         ondragstart="drag(event)" 
+                         data-id="{{ req.id }}">
+                        <div class="kanban-card-subject">{{ req.subject }}</div>
+                        <div class="kanban-card-equipment">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                            {{ req.equipment_name }}
+                        </div>
+                        <div class="kanban-card-footer">
+                            <div class="technician-avatar" title="{{ req.technician_name }}">
+                                {{ req.technician_initials }}
+                            </div>
+                            {% if req.priority %}
+                            <span class="priority-badge priority-{{ req.priority }}">
+                                {{ req.priority|upper }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- In Progress Column -->
+            <div class="kanban-column" data-status="in-progress">
+                <div class="kanban-column-header in-progress">
+                    <span>In Progress</span>
+                    <span class="kanban-column-count" id="count-in-progress">0</span>
+                </div>
+                <div class="kanban-cards" id="cards-in-progress" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    {% for req in requests %}
+                    {% if req.status == 'in-progress' %}
+                    <div class="kanban-card {% if req.is_overdue %}overdue{% endif %}" 
+                         draggable="true" 
+                         ondragstart="drag(event)" 
+                         data-id="{{ req.id }}">
+                        <div class="kanban-card-subject">{{ req.subject }}</div>
+                        <div class="kanban-card-equipment">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                            {{ req.equipment_name }}
+                        </div>
+                        <div class="kanban-card-footer">
+                            <div class="technician-avatar" title="{{ req.technician_name }}">
+                                {{ req.technician_initials }}
+                            </div>
+                            {% if req.priority %}
+                            <span class="priority-badge priority-{{ req.priority }}">
+                                {{ req.priority|upper }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Repaired Column -->
+            <div class="kanban-column" data-status="repaired">
+                <div class="kanban-column-header repaired">
+                    <span>Repaired</span>
+                    <span class="kanban-column-count" id="count-repaired">0</span>
+                </div>
+                <div class="kanban-cards" id="cards-repaired" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    {% for req in requests %}
+                    {% if req.status == 'repaired' %}
+                    <div class="kanban-card {% if req.is_overdue %}overdue{% endif %}" 
+                         draggable="true" 
+                         ondragstart="drag(event)" 
+                         data-id="{{ req.id }}">
+                        <div class="kanban-card-subject">{{ req.subject }}</div>
+                        <div class="kanban-card-equipment">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                            {{ req.equipment_name }}
+                        </div>
+                        <div class="kanban-card-footer">
+                            <div class="technician-avatar" title="{{ req.technician_name }}">
+                                {{ req.technician_initials }}
+                            </div>
+                            {% if req.priority %}
+                            <span class="priority-badge priority-{{ req.priority }}">
+                                {{ req.priority|upper }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Scrap Column -->
+            <div class="kanban-column" data-status="scrap">
+                <div class="kanban-column-header scrap">
+                    <span>Scrap</span>
+                    <span class="kanban-column-count" id="count-scrap">0</span>
+                </div>
+                <div class="kanban-cards" id="cards-scrap" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    {% for req in requests %}
+                    {% if req.status == 'scrap' %}
+                    <div class="kanban-card {% if req.is_overdue %}overdue{% endif %}" 
+                         draggable="true" 
+                         ondragstart="drag(event)" 
+                         data-id="{{ req.id }}">
+                        <div class="kanban-card-subject">{{ req.subject }}</div>
+                        <div class="kanban-card-equipment">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                            {{ req.equipment_name }}
+                        </div>
+                        <div class="kanban-card-footer">
+                            <div class="technician-avatar" title="{{ req.technician_name }}">
+                                {{ req.technician_initials }}
+                            </div>
+                            {% if req.priority %}
+                            <span class="priority-badge priority-{{ req.priority }}">
+                                {{ req.priority|upper }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="employee-only hidden">
+    <div class="card">
+        <div class="card-header">
+            <h1 class="card-title">Employee View</h1>
+        </div>
+        <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+            As an employee, you can only submit maintenance requests. Please use the Equipment page to submit a new request.
+        </p>
+        <div style="text-align: center;">
+            <button class="btn btn-primary" onclick="location.href='{{ url_for('equipment_detail') }}'">
+                Request Maintenance
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/kanban.js') }}"></script>
+<script>
+    // Update column counts on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateColumnCounts();
+    });
+    
+    function updateColumnCounts() {
+        const statuses = ['new', 'in-progress', 'repaired', 'scrap'];
+        statuses.forEach(status => {
+            const cards = document.querySelectorAll(`#cards-${status} .kanban-card`);
+            const countElement = document.getElementById(`count-${status}`);
+            if (countElement) {
+                countElement.textContent = cards.length;
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}Equipment Management - GearGuard{% endblock %}
+
+{% block content %}
+<!-- Smart Button Header -->
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Equipment Management</h1>
+        <button class="smart-button" onclick="scrollToMaintenanceForm()">
+            Maintenance Requests
+            <span class="badge" id="maintenance-count">{{ maintenance_requests|length if maintenance_requests else 0 }}</span>
+        </button>
+    </div>
+</div>
+
+<!-- Add New Equipment Form (Technician Only) -->
+<div class="card technician-only">
+    <div class="card-header">
+        <h2 class="card-title">Add New Equipment</h2>
+    </div>
+    
+    <form method="POST" action="{{ url_for('add_equipment') }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="equipment-name" class="form-label required">Equipment Name</label>
+                <input type="text" 
+                       id="equipment-name" 
+                       name="name" 
+                       class="form-control" 
+                       placeholder="e.g., CNC Machine #5" 
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label for="serial-number" class="form-label required">Serial Number</label>
+                <input type="text" 
+                       id="serial-number" 
+                       name="serial_number" 
+                       class="form-control" 
+                       placeholder="e.g., SN-2024-001" 
+                       required>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="purchase-date" class="form-label required">Purchase Date</label>
+                <input type="date" 
+                       id="purchase-date" 
+                       name="purchase_date" 
+                       class="form-control" 
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label for="location" class="form-label required">Location</label>
+                <input type="text" 
+                       id="location" 
+                       name="location" 
+                       class="form-control" 
+                       placeholder="e.g., Building A, Floor 2" 
+                       required>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="description" class="form-label">Description</label>
+            <textarea id="description" 
+                      name="description" 
+                      class="form-control" 
+                      rows="3" 
+                      placeholder="Additional details about the equipment..."></textarea>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Add Equipment</button>
+    </form>
+</div>
+
+<!-- Equipment List (Technician Only) -->
+<div class="card technician-only">
+    <div class="card-header">
+        <h2 class="card-title">Equipment Inventory</h2>
+    </div>
+    
+    <table class="equipment-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Serial Number</th>
+                <th>Purchase Date</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for equipment in equipment_list %}
+            <tr>
+                <td>{{ equipment.name }}</td>
+                <td>{{ equipment.serial_number }}</td>
+                <td>{{ equipment.purchase_date }}</td>
+                <td>{{ equipment.location }}</td>
+                <td>
+                    <span class="priority-badge priority-{{ equipment.status }}">
+                        {{ equipment.status|upper }}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-outline" style="padding: 0.5rem 1rem;">View</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Maintenance Request Form -->
+<div class="card" id="maintenance-form-section">
+    <div class="card-header">
+        <h2 class="card-title">Request Maintenance</h2>
+    </div>
+    
+    <form method="POST" action="{{ url_for('submit_maintenance_request') }}" id="maintenance-request-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="request-subject" class="form-label required">Subject</label>
+                <input type="text" 
+                       id="request-subject" 
+                       name="subject" 
+                       class="form-control" 
+                       placeholder="Brief description of the issue" 
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label for="request-equipment" class="form-label required">Equipment</label>
+                <select id="request-equipment" 
+                        name="equipment_id" 
+                        class="form-control" 
+                        onchange="autoFillEquipmentData()"
+                        required>
+                    <option value="">Select Equipment</option>
+                    {% for equipment in equipment_list %}
+                    <option value="{{ equipment.id }}" 
+                            data-location="{{ equipment.location }}"
+                            data-team="{{ equipment.maintenance_team }}"
+                            data-category="{{ equipment.category }}">
+                        {{ equipment.name }} - {{ equipment.serial_number }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="request-type" class="form-label required">Maintenance Type</label>
+                <select id="request-type" 
+                        name="maintenance_type" 
+                        class="form-control" 
+                        onchange="toggleMaintenanceFields()"
+                        required>
+                    <option value="">Select Type</option>
+                    <option value="corrective">Corrective</option>
+                    <option value="preventive">Preventive</option>
+                </select>
+            </div>
+            
+            <!-- Priority Field (shown for Corrective only) -->
+            <div class="form-group" id="priority-field" style="display: none;">
+                <label for="request-priority" class="form-label required">Priority</label>
+                <select id="request-priority" name="priority" class="form-control">
+                    <option value="">Select Priority</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            
+            <!-- Recurrence Field (shown for Preventive only) -->
+            <div class="form-group" id="recurrence-field" style="display: none;">
+                <label for="request-recurrence" class="form-label required">Recurrence</label>
+                <select id="request-recurrence" name="recurrence" class="form-control">
+                    <option value="">Select Recurrence</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="annually">Annually</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="maintenance-team" class="form-label">Maintenance Team</label>
+                <input type="text" 
+                       id="maintenance-team" 
+                       name="maintenance_team" 
+                       class="form-control" 
+                       placeholder="Auto-filled from equipment" 
+                       readonly>
+            </div>
+            
+            <div class="form-group">
+                <label for="category" class="form-label">Category</label>
+                <input type="text" 
+                       id="category" 
+                       name="category" 
+                       class="form-control" 
+                       placeholder="Auto-filled from equipment" 
+                       readonly>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="request-description" class="form-label required">Description</label>
+            <textarea id="request-description" 
+                      name="description" 
+                      class="form-control" 
+                      rows="4" 
+                      placeholder="Provide detailed information about the maintenance required..."
+                      required></textarea>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="requested-date" class="form-label">Requested Date</label>
+                <input type="date" 
+                       id="requested-date" 
+                       name="requested_date" 
+                       class="form-control">
+            </div>
+            
+            <div class="form-group technician-only">
+                <label for="assigned-technician" class="form-label">Assign Technician</label>
+                <select id="assigned-technician" name="technician_id" class="form-control">
+                    <option value="">Unassigned</option>
+                    {% for technician in technicians %}
+                    <option value="{{ technician.id }}">{{ technician.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <button type="submit" class="btn btn-primary">Submit Request</button>
+            <button type="reset" class="btn btn-secondary">Clear Form</button>
+        </div>
+    </form>
+</div>
+
+<!-- Recent Maintenance Requests -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Recent Maintenance Requests</h2>
+    </div>
+    
+    <table class="equipment-table">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Equipment</th>
+                <th>Type</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Requested Date</th>
+                <th class="technician-only">Technician</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for request in maintenance_requests %}
+            <tr>
+                <td>{{ request.subject }}</td>
+                <td>{{ request.equipment_name }}</td>
+                <td>
+                    <span class="priority-badge priority-{{ 'high' if request.maintenance_type == 'corrective' else 'low' }}">
+                        {{ request.maintenance_type|upper }}
+                    </span>
+                </td>
+                <td>
+                    {% if request.priority %}
+                    <span class="priority-badge priority-{{ request.priority }}">
+                        {{ request.priority|upper }}
+                    </span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>{{ request.status|upper }}</td>
+                <td>{{ request.requested_date }}</td>
+                <td class="technician-only">{{ request.technician_name or 'Unassigned' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/equipment.js') }}"></script>
+<script>
+    // ============================================
+    // Dynamic Form Logic
+    // ============================================
+    function toggleMaintenanceFields() {
+        const typeSelect = document.getElementById('request-type');
+        const priorityField = document.getElementById('priority-field');
+        const recurrenceField = document.getElementById('recurrence-field');
+        const priorityInput = document.getElementById('request-priority');
+        const recurrenceInput = document.getElementById('request-recurrence');
+        
+        if (typeSelect.value === 'corrective') {
+            priorityField.style.display = 'block';
+            recurrenceField.style.display = 'none';
+            priorityInput.required = true;
+            recurrenceInput.required = false;
+            recurrenceInput.value = '';
+        } else if (typeSelect.value === 'preventive') {
+            priorityField.style.display = 'none';
+            recurrenceField.style.display = 'block';
+            priorityInput.required = false;
+            recurrenceInput.required = true;
+            priorityInput.value = '';
+        } else {
+            priorityField.style.display = 'none';
+            recurrenceField.style.display = 'none';
+            priorityInput.required = false;
+            recurrenceInput.required = false;
+        }
+    }
+    
+    // ============================================
+    // Auto-Fill Equipment Data
+    // ============================================
+    function autoFillEquipmentData() {
+        const equipmentSelect = document.getElementById('request-equipment');
+        const selectedOption = equipmentSelect.options[equipmentSelect.selectedIndex];
+        
+        if (selectedOption.value) {
+            // Auto-fill maintenance team and category from data attributes
+            const team = selectedOption.getAttribute('data-team') || 'Mechanical Team';
+            const category = selectedOption.getAttribute('data-category') || 'General Maintenance';
+            
+            document.getElementById('maintenance-team').value = team;
+            document.getElementById('category').value = category;
+        } else {
+            document.getElementById('maintenance-team').value = '';
+            document.getElementById('category').value = '';
+        }
+    }
+    
+    // ============================================
+    // Scroll to Maintenance Form
+    // ============================================
+    function scrollToMaintenanceForm() {
+        const formSection = document.getElementById('maintenance-form-section');
+        formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Add a subtle highlight animation
+        formSection.style.transition = 'background-color 0.5s ease';
+        const originalBg = formSection.style.backgroundColor;
+        formSection.style.backgroundColor = 'rgba(13, 110, 253, 0.1)';
+        
+        setTimeout(() => {
+            formSection.style.backgroundColor = originalBg;
+        }, 1000);
+    }
+</script>
+{% endblock %}

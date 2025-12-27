@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GearGuard - Maintenance Tracker{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <svg class="navbar-brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                </svg>
+                GearGuard
+            </a>
+            
+            <ul class="navbar-nav">
+                <li>
+                    <a href="{{ url_for('kanban') }}" class="nav-link {% if request.endpoint == 'kanban' %}active{% endif %}">
+                        Kanban Board
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('equipment_detail') }}" class="nav-link {% if request.endpoint == 'equipment_detail' %}active{% endif %}">
+                        Equipment
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('calendar') }}" class="nav-link {% if request.endpoint == 'calendar' %}active{% endif %}">
+                        Calendar
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('map') }}" class="nav-link {% if request.endpoint == 'map' %}active{% endif %}">
+                        Location Map
+                    </a>
+                </li>
+                
+                <!-- Role Toggle -->
+                <li>
+                    <div class="role-toggle">
+                        <button id="role-technician" class="active" onclick="switchRole('technician')">
+                            Technician
+                        </button>
+                        <button id="role-employee" onclick="switchRole('employee')">
+                            Employee
+                        </button>
+                    </div>
+                </li>
+                
+                <!-- Dark Mode Toggle -->
+                <li>
+                    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">
+                        <span id="theme-icon">🌙</span>
+                        <span id="theme-text">Dark</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // ============================================
+        // Dark Mode Toggle
+        // ============================================
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Update button text and icon
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+            
+            if (newTheme === 'dark') {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light';
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark';
+            }
+        }
+        
+        // Load saved theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+            
+            if (savedTheme === 'dark') {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light';
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark';
+            }
+        });
+        
+        // ============================================
+        // Role Toggle
+        // ============================================
+        function switchRole(role) {
+            // Update button states
+            document.getElementById('role-technician').classList.remove('active');
+            document.getElementById('role-employee').classList.remove('active');
+            document.getElementById('role-' + role).classList.add('active');
+            
+            // Save role to localStorage
+            localStorage.setItem('userRole', role);
+            
+            // Toggle visibility of role-specific elements
+            const technicianElements = document.querySelectorAll('.technician-only');
+            const employeeElements = document.querySelectorAll('.employee-only');
+            
+            if (role === 'technician') {
+                technicianElements.forEach(el => el.classList.remove('hidden'));
+                employeeElements.forEach(el => el.classList.add('hidden'));
+            } else {
+                technicianElements.forEach(el => el.classList.add('hidden'));
+                employeeElements.forEach(el => el.classList.remove('hidden'));
+            }
+            
+            // Dispatch custom event for pages to react to role changes
+            window.dispatchEvent(new CustomEvent('roleChanged', { detail: { role } }));
+        }
+        
+        // Load saved role on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedRole = localStorage.getItem('userRole') || 'technician';
+            switchRole(savedRole);
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

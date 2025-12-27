@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Equipment Location Map - GearGuard{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Equipment Location Map</h1>
+        <div class="flex gap-2">
+            <button class="btn btn-outline" onclick="centerMap()">
+                📍 Reset View
+            </button>
+            <button class="btn btn-primary" onclick="location.href='{{ url_for('equipment_detail') }}'">
+                + Add Equipment
+            </button>
+        </div>
+    </div>
+    
+    <!-- Map Container -->
+    <div id="map"></div>
+</div>
+
+<!-- Equipment Location List -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Equipment Locations</h2>
+    </div>
+    
+    <table class="equipment-table">
+        <thead>
+            <tr>
+                <th>Equipment Name</th>
+                <th>Serial Number</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Coordinates</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for equipment in equipment_locations %}
+            <tr onclick="focusOnEquipment({{ equipment.lat }}, {{ equipment.lng }})" style="cursor: pointer;">
+                <td>{{ equipment.name }}</td>
+                <td>{{ equipment.serial_number }}</td>
+                <td>{{ equipment.location }}</td>
+                <td>
+                    <span class="priority-badge priority-{{ equipment.status }}">
+                        {{ equipment.status|upper }}
+                    </span>
+                </td>
+                <td>{{ equipment.lat }}, {{ equipment.lng }}</td>
+                <td>
+                    <button class="btn btn-outline" 
+                            style="padding: 0.5rem 1rem;"
+                            onclick="event.stopPropagation(); viewEquipmentDetails('{{ equipment.id }}')">
+                        View Details
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Legend -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Map Legend</h2>
+    </div>
+    <div class="flex gap-3" style="flex-wrap: wrap;">
+        <div class="flex gap-1" style="align-items: center;">
+            <div style="width: 20px; height: 20px; background-color: #198754; border-radius: 50%; border: 2px solid white;"></div>
+            <span style="color: var(--text-primary);">Operational</span>
+        </div>
+        <div class="flex gap-1" style="align-items: center;">
+            <div style="width: 20px; height: 20px; background-color: #ffc107; border-radius: 50%; border: 2px solid white;"></div>
+            <span style="color: var(--text-primary);">Maintenance Required</span>
+        </div>
+        <div class="flex gap-1" style="align-items: center;">
+            <div style="width: 20px; height: 20px; background-color: #dc3545; border-radius: 50%; border: 2px solid white;"></div>
+            <span style="color: var(--text-primary);">Out of Service</span>
+        </div>
+        <div class="flex gap-1" style="align-items: center;">
+            <div style="width: 20px; height: 20px; background-color: #6c757d; border-radius: 50%; border: 2px solid white;"></div>
+            <span style="color: var(--text-primary);">Unknown Status</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let map;
+    let markers = [];
+    
+    // ============================================
+    // Initialize Leaflet Map
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize map centered on a default facility location
+        // In production, this would be the actual facility coordinates
+        const facilityLat = 40.7128;  // Example: New York City
+        const facilityLng = -74.0060;
+        
+        map = L.map('map').setView([facilityLat, facilityLng], 13);
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Add sample equipment markers
+        // In production, this data would come from the backend
+        const sampleEquipment = [
+            { name: 'CNC Machine #1', location: 'Building A, Floor 1', lat: 40.7128, lng: -74.0060, status: 'operational' },
+            { name: 'Hydraulic Press #2', location: 'Building A, Floor 2', lat: 40.7138, lng: -74.0070, status: 'maintenance' },
+            { name: 'Conveyor Belt #5', location: 'Building B, Floor 1', lat: 40.7118, lng: -74.0050, status: 'out-of-service' },
+            { name: 'Welding Station #3', location: 'Building C, Floor 1', lat: 40.7148, lng: -74.0080, status: 'operational' },
+            { name: 'Assembly Line #1', location: 'Building A, Floor 3', lat: 40.7108, lng: -74.0040, status: 'operational' }
+        ];
+        
+        // Add equipment markers from backend data
+        {% for equipment in equipment_locations %}
+        addEquipmentMarker(
+            {{ equipment.lat }},
+            {{ equipment.lng }},
+            '{{ equipment.name }}',
+            '{{ equipment.location }}',
+            '{{ equipment.serial_number }}',
+            '{{ equipment.status }}'
+        );
+        {% endfor %}
+        
+        // If no backend data, use sample data for demonstration
+        if (markers.length === 0) {
+            sampleEquipment.forEach(eq => {
+                addEquipmentMarker(eq.lat, eq.lng, eq.name, eq.location, 'SAMPLE-SN', eq.status);
+            });
+        }
+    });
+    
+    // ============================================
+    // Add Equipment Marker
+    // ============================================
+    function addEquipmentMarker(lat, lng, name, location, serialNumber, status) {
+        // Determine marker color based on status
+        let markerColor = '#6c757d';  // default gray
+        if (status === 'operational' || status === 'low') {
+            markerColor = '#198754';  // green
+        } else if (status === 'maintenance' || status === 'medium') {
+            markerColor = '#ffc107';  // yellow
+        } else if (status === 'out-of-service' || status === 'high') {
+            markerColor = '#dc3545';  // red
+        }
+        
+        // Create custom icon
+        const customIcon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="
+                background-color: ${markerColor};
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                border: 3px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            "></div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+        
+        // Create marker
+        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+        
+        // Create popup content
+        const popupContent = `
+            <div class="map-marker-popup">
+                <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">
+                    ${name}
+                </h3>
+                <p style="margin: 0.25rem 0; color: var(--text-secondary); font-size: 0.875rem;">
+                    <strong>Serial:</strong> ${serialNumber}
+                </p>
+                <p style="margin: 0.25rem 0; color: var(--text-secondary); font-size: 0.875rem;">
+                    <strong>Location:</strong> ${location}
+                </p>
+                <p style="margin: 0.25rem 0; color: var(--text-secondary); font-size: 0.875rem;">
+                    <strong>Status:</strong> 
+                    <span style="color: ${markerColor}; font-weight: 600; text-transform: uppercase;">
+                        ${status}
+                    </span>
+                </p>
+                <button onclick="viewEquipmentDetailsFromMap('${serialNumber}')" 
+                        style="margin-top: 0.5rem; padding: 0.5rem 1rem; background-color: var(--brand-primary); color: white; border: none; border-radius: 6px; cursor: pointer; width: 100%;">
+                    View Details
+                </button>
+            </div>
+        `;
+        
+        marker.bindPopup(popupContent);
+        markers.push(marker);
+    }
+    
+    // ============================================
+    // Center Map
+    // ============================================
+    function centerMap() {
+        if (markers.length > 0) {
+            const group = L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+    }
+    
+    // ============================================
+    // Focus on Equipment
+    // ============================================
+    function focusOnEquipment(lat, lng) {
+        map.setView([lat, lng], 16);
+        
+        // Find and open the popup for this marker
+        markers.forEach(marker => {
+            const markerLatLng = marker.getLatLng();
+            if (markerLatLng.lat === lat && markerLatLng.lng === lng) {
+                marker.openPopup();
+            }
+        });
+    }
+    
+    // ============================================
+    // View Equipment Details
+    // ============================================
+    function viewEquipmentDetails(equipmentId) {
+        // In production, navigate to equipment detail page
+        console.log('Viewing equipment:', equipmentId);
+        window.location.href = `/equipment/${equipmentId}`;
+    }
+    
+    function viewEquipmentDetailsFromMap(serialNumber) {
+        // In production, navigate to equipment detail page by serial number
+        console.log('Viewing equipment with serial:', serialNumber);
+        alert(`Equipment Details\n\nSerial Number: ${serialNumber}\n\nIn production, this would navigate to the detailed equipment page.`);
+    }
+</script>
+{% endblock %}
