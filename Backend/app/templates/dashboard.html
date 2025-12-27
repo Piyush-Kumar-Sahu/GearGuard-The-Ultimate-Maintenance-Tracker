@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>GearGuard Dashboard</h1>
+
+<h2>Users</h2>
+<ul>
+  {% for u in users %}
+    <li>{{ u.id }} - {{ u.name }} ({{ u.role }})</li>
+  {% endfor %}
+</ul>
+
+<h2>Equipment</h2>
+<ul>
+  {% for e in equipment %}
+    <li>{{ e.id }} - {{ e.name }} ({{ e.location }})</li>
+  {% endfor %}
+</ul>
+
+<h2>Maintenance Requests</h2>
+<ul>
+  {% for r in requests %}
+    <li>{{ r.id }} - {{ r.subject }} [{{ r.status }}]</li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

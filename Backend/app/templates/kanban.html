@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2>Maintenance Kanban</h2>
+
+<div style="width:100%;">
+
+  {% for status in ['NEW','IN_PROGRESS','REPAIRED','SCRAP'] %}
+    <div style="
+        width:24%;
+        display:inline-block;
+        vertical-align:top;
+        margin-right:0.5%;
+    ">
+      <h3>{{ status }}</h3>
+
+      {% for r in requests if r.status == status %}
+        <div style="
+            border:1px solid #ccc;
+            padding:10px;
+            margin-bottom:15px;
+            border-radius:8px;
+            background:#f9f9f9;
+        ">
+          <strong>{{ r.subject }}</strong>
+
+          <!-- MEDIA PLAYBACK -->
+          {% for media in r.media_files %}
+            {% if media.file_type in ['mp3', 'mp2'] %}
+              <audio controls style="width:100%; margin-top:8px;">
+                <source src="/media/audio/{{ media.filename }}">
+              </audio>
+            {% elif media.file_type == 'mp4' %}
+              <video controls style="width:100%; margin-top:8px;">
+                <source src="/media/video/{{ media.filename }}">
+              </video>
+            {% endif %}
+          {% endfor %}
+
+          <!-- UPLOAD FORM -->
+          <form class="upload-form"
+                data-request-id="{{ r.id }}"
+                enctype="multipart/form-data"
+                style="margin-top:10px;">
+            <input type="file" name="file" required>
+            <button type="submit">Upload</button>
+          </form>
+
+        </div>
+      {% endfor %}
+    </div>
+  {% endfor %}
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll(".upload-form").forEach(form => {
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const requestId = this.dataset.requestId;
+    const formData = new FormData(this);
+
+    fetch(`/api/upload-media/${requestId}`, {
+      method: "POST",
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.message) {
+        alert("Upload successful");
+        location.reload();
+      } else {
+        alert("Upload failed");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Error uploading file");
+    });
+  });
+});
+</script>
+{% endblock %}
